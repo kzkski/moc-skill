@@ -1,10 +1,60 @@
 # moc-skill — FIWARE Orion 読み取り専用クエリ OpenCode スキル
 
-[FIWARE Orion Context Broker](https://fiware-orion.readthedocs.io/) (NGSIv2) に対して、生成 AI エージェントから**認証不要の GET のみ**でエンティティ情報を取得するための [OpenCode](https://opencode.ai/) スキルです。
+[FIWARE Orion Context Broker](https://fiware-orion.readthedocs.io/) (NGSIv2) に対して、生成 AI エージェントから**認証不要の GET のみ**でエンティティ情報を取得するための [Agent Skills](https://agentskills.io/) 互換スキルです。
 
 - Entity の Read のみ（書き込み・Subscription・Registration は非対応）
 - `endpoints.json` カタログに登録された基盤だけアクセス可能
 - エージェントは `scripts/orion.sh` 経由でのみ Orion に問い合わせる
+
+[![skills.sh](https://skills.sh/b/kzkski/moc-skill)](https://skills.sh/kzkski/moc-skill)
+
+## インストール
+
+[skills CLI](https://github.com/vercel-labs/skills)（`npx skills add`）でのインストールを推奨します。OpenCode、Claude Code、Cursor など 70 以上のエージェントに対応しています。
+
+### プロジェクトにインストール（推奨）
+
+```bash
+# 利用可能スキルを確認
+npx skills add kzkski/moc-skill --list
+
+# OpenCode 向けにインストール
+npx skills add kzkski/moc-skill -a opencode -y
+
+# 複数エージェント向け
+npx skills add kzkski/moc-skill -a opencode -a claude-code -a cursor -y
+```
+
+### グローバルにインストール
+
+```bash
+npx skills add kzkski/moc-skill -g -a opencode -y
+```
+
+### ローカル clone からインストール
+
+```bash
+git clone https://github.com/kzkski/moc-skill.git
+cd your-project
+npx skills add /path/to/moc-skill -a opencode -y
+```
+
+インストール後、エージェントを再起動すると `moc-skill` スキルが読み込まれます。
+
+| エージェント | プロジェクト配置先 | グローバル配置先 |
+|--------------|-------------------|------------------|
+| OpenCode | `.agents/skills/moc-skill/` | `~/.config/opencode/skills/moc-skill/` |
+| Claude Code | `.claude/skills/moc-skill/` | `~/.claude/skills/moc-skill/` |
+| Cursor | `.agents/skills/moc-skill/` | `~/.cursor/skills/moc-skill/` |
+
+### 手動インストール
+
+`npx skills add` が使えない場合は、スキルディレクトリを直接コピーします。
+
+```bash
+mkdir -p .agents/skills
+cp -R skills/moc-skill .agents/skills/
+```
 
 ## リポジトリ構成
 
@@ -12,45 +62,20 @@
 moc-skill/
 ├── README.md
 ├── LICENSE
+├── skills.sh.json
 ├── .github/workflows/ci.yml
-├── skills/fiware-orion-query/
+├── skills/moc-skill/
 │   ├── SKILL.md
 │   ├── endpoints.json
 │   └── scripts/orion.sh
 └── tests/orion.bats
 ```
 
-## インストール
-
-スキルディレクトリ `skills/fiware-orion-query/` を、利用環境のスキル配置先にコピーまたはシンボリックリンクします。
-
-### OpenCode（プロジェクトローカル）
-
-```bash
-mkdir -p .opencode/skills
-cp -R skills/fiware-orion-query .opencode/skills/
-```
-
-### OpenCode（グローバル）
-
-```bash
-mkdir -p ~/.config/opencode/skills
-cp -R skills/fiware-orion-query ~/.config/opencode/skills/
-```
-
-### Claude Code 互換
-
-Claude Code でも同じ SKILL.md 形式を利用できます。
-
-```bash
-mkdir -p .claude/skills
-cp -R skills/fiware-orion-query .claude/skills/
-```
-
 ## 依存
 
 - [curl](https://curl.se/)
 - [jq](https://jqlang.github.io/jq/)
+- Node.js（`npx skills add` 利用時のみ）
 
 macOS (Homebrew) の例:
 
@@ -60,7 +85,7 @@ brew install curl jq
 
 ## endpoints.json の編集
 
-`skills/fiware-orion-query/endpoints.json` に Orion エンドポイントを登録します。
+インストール後はスキル配下の `endpoints.json` を編集します（例: `.agents/skills/moc-skill/endpoints.json`）。
 
 ```json
 {
@@ -90,7 +115,7 @@ export ORION_ENDPOINTS_FILE=/path/to/my-endpoints.json
 
 ## 使用例（エージェントへの依頼文）
 
-スキル配置後、OpenCode エージェントに自然言語で依頼できます。
+スキル配置後、エージェントに自然言語で依頼できます。
 
 - 「登録されている Orion 基盤を一覧して」
 - 「仙台の基盤（sendai）にどんなデータ型があるか調べて」
@@ -98,12 +123,10 @@ export ORION_ENDPOINTS_FILE=/path/to/my-endpoints.json
 - 「local 基盤で type=Device のエンティティ件数を教えて」
 - 「demo 基盤の sensor-001 エンティティの location 属性だけ見せて」
 
-エージェントは `skills/fiware-orion-query/scripts/orion.sh` を実行して結果を解釈します。
-
 ## CLI 直接実行
 
 ```bash
-ORION=skills/fiware-orion-query/scripts/orion.sh
+ORION=.agents/skills/moc-skill/scripts/orion.sh
 
 "$ORION" endpoints
 "$ORION" types sendai
@@ -121,7 +144,8 @@ ORION_DRY_RUN=1 "$ORION" entities local
 
 ```bash
 bats tests/
-shellcheck skills/fiware-orion-query/scripts/orion.sh
+shellcheck skills/moc-skill/scripts/orion.sh
+npx skills add . --list
 ```
 
 ## ライセンス

@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 
 setup() {
-  ORION_SCRIPT="${BATS_TEST_DIRNAME}/../skills/fiware-orion-query/scripts/orion.sh"
-  ENDPOINTS_FILE="${BATS_TEST_DIRNAME}/../skills/fiware-orion-query/endpoints.json"
+  ORION_SCRIPT="${BATS_TEST_DIRNAME}/../skills/moc-skill/scripts/orion.sh"
+  ENDPOINTS_FILE="${BATS_TEST_DIRNAME}/../skills/moc-skill/endpoints.json"
   export ORION_DRY_RUN=1
   export ORION_ENDPOINTS_FILE="${ENDPOINTS_FILE}"
 }

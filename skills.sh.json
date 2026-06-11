@@ -1,0 +1,11 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "FIWARE",
+      "description": "FIWARE Orion (NGSIv2) データ連携基盤向けスキル。",
+      "skills": ["moc-skill"]
+    }
+  ]
+}

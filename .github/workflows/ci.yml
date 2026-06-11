@@ -16,7 +16,10 @@ jobs:
           sudo apt-get install -y shellcheck bats jq curl
 
       - name: shellcheck
-        run: shellcheck skills/fiware-orion-query/scripts/orion.sh
+        run: shellcheck skills/moc-skill/scripts/orion.sh
 
       - name: bats
         run: bats tests/
+
+      - name: Verify skills CLI discovery
+        run: npx skills add . --list | grep -q moc-skill

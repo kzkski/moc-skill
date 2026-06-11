@@ -1,24 +1,47 @@
 ---
-name: fiware-orion-query
+name: moc-skill
 description: >-
   FIWARE Orion Context Broker (NGSIv2) からエンティティ情報を読み取り専用で取得する。
   データ連携基盤・都市OS・スマートシティ基盤・センサーデータ・IoTプラットフォームへの
   GET クエリ、エンティティ一覧・型探索、NGSIv2 API 調査が必要なときに能動的に使う。
   Orion / NGSIv2 / Context Broker / エンティティ取得 / type 一覧 / q クエリ /
   地理空間クエリ / Fiware-Service ヘッダー付き基盤アクセスの依頼で発火する。
+license: MIT
 ---
 
 # FIWARE Orion 読み取り専用クエリ
 
 FIWARE Orion Context Broker (NGSIv2) に対して、**認証不要の GET のみ**でエンティティ情報を取得するスキルです。書き込み・Subscription・Registration は実装していません。
 
+## インストール
+
+[skills CLI](https://github.com/vercel-labs/skills) でインストールします（OpenCode / Claude Code / Cursor 等に対応）。
+
+```bash
+npx skills add kzkski/moc-skill -a opencode -y
+```
+
+ローカルパスから試す場合:
+
+```bash
+npx skills add ./path/to/moc-skill --list
+npx skills add ./path/to/moc-skill -a opencode -y
+```
+
 ## 重要: アクセス経路
 
 **必ず `scripts/orion.sh` 経由でアクセスすること。** カタログ外 URL へ直接 `curl` しないでください。対象基盤は `endpoints.json` に登録された名前だけを使います。
 
+`npx skills add` 後、`moc-skill` スキル配下の `scripts/orion.sh` を絶対パスで実行します。代表パス:
+
+- `.agents/skills/moc-skill/scripts/orion.sh`（OpenCode / Cursor 等）
+- `.claude/skills/moc-skill/scripts/orion.sh`（Claude Code）
+- `~/.config/opencode/skills/moc-skill/scripts/orion.sh`（OpenCode グローバル）
+
+エージェントは `**/moc-skill/scripts/orion.sh` を探索し、見つかったパスを `ORION` として使ってください。`orion.sh` は同ディレクトリ隣の `endpoints.json` を自動解決します。
+
 ```bash
-SKILL_DIR="skills/fiware-orion-query"   # 配置先に合わせて調整
-ORION="${SKILL_DIR}/scripts/orion.sh"
+ORION="/path/to/moc-skill/scripts/orion.sh"
 ```
 
 環境変数 `ORION_ENDPOINTS_FILE` でカタログパスを上書きできます（未設定時はスキル同梱の `endpoints.json`）。
