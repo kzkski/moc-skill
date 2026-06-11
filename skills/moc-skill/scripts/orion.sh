@@ -11,11 +11,16 @@ Usage: orion.sh <command> [args...]
 
 Commands:
   endpoints                         List configured endpoint names
-  types <ep>                        GET /v2/types?options=count
+  types <ep> [service=NAME]         GET /v2/types?options=count
   entities <ep> [k=v ...]           GET /v2/entities
   entity <ep> <id> [k=v ...]        GET /v2/entities/{id}
   count <ep> [k=v ...]              GET /v2/entities with limit=1&options=count
-  raw <ep> <path?query>             GET arbitrary path under /v2/
+  raw <ep> <path?query> [service=NAME]
+                                    GET arbitrary path under /v2/
+
+Notes:
+  If an endpoint defines multiple Fiware-Service values, pass service=NAME
+  (reserved; not sent to Orion as a query parameter).
 
 Environment:
   ORION_ENDPOINTS_FILE   Override endpoints.json path
@@ -39,6 +44,8 @@ list_endpoint_names() {
 
 resolve_endpoint() {
   local name="$1"
+  local service_selector="${2:-}"
+
   require_endpoints_file
 
   if ! jq -e --arg name "${name}" '.endpoints[$name]' "${ENDPOINTS_FILE}" >/dev/null; then
@@ -47,18 +54,63 @@ resolve_endpoint() {
     die "unknown endpoint '${name}'. Available: ${available:-none}"
   fi
 
-  local base_url service service_path
+  local base_url
   base_url="$(jq -r --arg name "${name}" '.endpoints[$name].base_url' "${ENDPOINTS_FILE}")"
-  service="$(jq -r --arg name "${name}" '.endpoints[$name].service' "${ENDPOINTS_FILE}")"
-  service_path="$(jq -r --arg name "${name}" '.endpoints[$name].service_path' "${ENDPOINTS_FILE}")"
 
   if [[ ! "${base_url}" =~ ^https?:// ]]; then
     die "invalid base_url for endpoint '${name}': must match ^https?://"
   fi
 
+  local resolved_json
+  resolved_json="$(jq -c --arg name "${name}" --arg sel "${service_selector}" '
+    def service_item($default_path):
+      if type == "string" then {value: ., path: $default_path, note: ""}
+      else {value: .value, path: (.["Fiware-ServicePath"] // $default_path), note: (.note // "")}
+      end;
+    def service_label:
+      if .note == "" then .value else "\(.value) (\(.note))" end;
+    .endpoints[$name] as $ep |
+    ($ep["Fiware-ServicePath"] // "") as $default_path |
+    ($ep["Fiware-Service"]) as $fs |
+    (if $fs == null then []
+     elif ($fs | type) == "string" then [($fs | service_item($default_path))]
+     elif ($fs | type) == "array" then
+       [$fs[] | service_item($default_path)]
+     else [{error: "invalid Fiware-Service type for endpoint \($name)"}]
+     end) as $items |
+    if ($items | length) > 0 and ($items[0] | has("error")) then
+      $items[0]
+    elif ($items | length) == 0 then
+      {service: "", path: $default_path}
+    elif ($items | length) == 1 then
+      {service: $items[0].value, path: $items[0].path}
+    elif $sel == "" then
+      {error: "endpoint \($name) has multiple Fiware-Service values; specify service=NAME",
+       available: [$items[] | service_label]}
+    else
+      ($items | map(select(.value == $sel)) | first) as $match |
+      if $match == null then
+        {error: "unknown service \($sel) for endpoint \($name)",
+         available: [$items[] | service_label]}
+      else
+        {service: $match.value, path: $match.path}
+      end
+    end
+  ' "${ENDPOINTS_FILE}")"
+
+  if jq -e '.error' <<< "${resolved_json}" >/dev/null; then
+    local message available
+    message="$(jq -r '.error' <<< "${resolved_json}")"
+    if jq -e '.available' <<< "${resolved_json}" >/dev/null; then
+      available="$(jq -r '.available | join(", ")' <<< "${resolved_json}")"
+      die "${message}. Available: ${available}"
+    fi
+    die "${message}"
+  fi
+
   RESOLVED_BASE_URL="${base_url}"
-  RESOLVED_SERVICE="${service}"
-  RESOLVED_SERVICE_PATH="${service_path}"
+  RESOLVED_SERVICE="$(jq -r '.service // ""' <<< "${resolved_json}")"
+  RESOLVED_SERVICE_PATH="$(jq -r '.path // ""' <<< "${resolved_json}")"
 }
 
 validate_entity_id() {
@@ -93,6 +145,42 @@ has_kv_key() {
     [[ "${k}" == "${key}" ]] && return 0
   done
   return 1
+}
+
+get_kv_value() {
+  local key="$1"
+  local i
+  for i in "${!PARSED_KV_KEYS[@]}"; do
+    if [[ "${PARSED_KV_KEYS[$i]}" == "${key}" ]]; then
+      echo "${PARSED_KV_VALUES[$i]}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+remove_kv_key() {
+  local key="$1"
+  local new_keys=() new_values=()
+  local i
+  if ((${#PARSED_KV_KEYS[@]} > 0)); then
+    for i in "${!PARSED_KV_KEYS[@]}"; do
+      if [[ "${PARSED_KV_KEYS[$i]}" != "${key}" ]]; then
+        new_keys+=("${PARSED_KV_KEYS[$i]}")
+        new_values+=("${PARSED_KV_VALUES[$i]}")
+      fi
+    done
+  fi
+  PARSED_KV_KEYS=("${new_keys[@]+"${new_keys[@]}"}")
+  PARSED_KV_VALUES=("${new_values[@]+"${new_values[@]}"}")
+}
+
+extract_service_selector() {
+  SELECTED_SERVICE=""
+  if has_kv_key "service"; then
+    SELECTED_SERVICE="$(get_kv_value "service")"
+    remove_kv_key "service"
+  fi
 }
 
 set_kv() {
@@ -192,12 +280,31 @@ run_count() {
 
 cmd_endpoints() {
   require_endpoints_file
-  jq -r '.endpoints | to_entries[] | "\(.key)\t\(.value.base_url)\t\(.value.note)"' "${ENDPOINTS_FILE}"
+  jq -r '
+    def format_service_entry:
+      if type == "string" then .
+      else .value + (if (.note // "") != "" then " (\(.note))" else "" end)
+      end;
+    .endpoints | to_entries[] |
+    (.value["Fiware-Service"] |
+      if . == null then ""
+      elif type == "string" then .
+      elif type == "array" then
+        map(format_service_entry) | join(", ")
+      else "" end) as $services |
+    "\(.key)\t\(.value.base_url)\t\($services)\t\(.value.note // "")"
+  ' "${ENDPOINTS_FILE}"
 }
 
 cmd_types() {
   local ep="$1"
-  resolve_endpoint "${ep}"
+  shift
+  local service_selector=""
+  if [[ $# -ge 1 ]]; then
+    [[ "${1}" == service=* ]] || die "usage: orion.sh types <ep> [service=NAME]"
+    service_selector="${1#service=}"
+  fi
+  resolve_endpoint "${ep}" "${service_selector}"
   PARSED_KV_KEYS=("options")
   PARSED_KV_VALUES=("count")
   run_get "${RESOLVED_BASE_URL}/v2/types"
@@ -206,8 +313,9 @@ cmd_types() {
 cmd_entities() {
   local ep="$1"
   shift
-  resolve_endpoint "${ep}"
   parse_kv_args "$@"
+  extract_service_selector
+  resolve_endpoint "${ep}" "${SELECTED_SERVICE}"
   apply_default_entity_params
   run_get "${RESOLVED_BASE_URL}/v2/entities"
 }
@@ -216,9 +324,10 @@ cmd_entity() {
   local ep="$1"
   local id="$2"
   shift 2
-  resolve_endpoint "${ep}"
   validate_entity_id "${id}"
   parse_kv_args "$@"
+  extract_service_selector
+  resolve_endpoint "${ep}" "${SELECTED_SERVICE}"
   apply_default_entity_params
   run_get "${RESOLVED_BASE_URL}/v2/entities/${id}"
 }
@@ -226,8 +335,9 @@ cmd_entity() {
 cmd_count() {
   local ep="$1"
   shift
-  resolve_endpoint "${ep}"
   parse_kv_args "$@"
+  extract_service_selector
+  resolve_endpoint "${ep}" "${SELECTED_SERVICE}"
   set_kv "limit" "1"
   set_kv "options" "count"
   run_count "${RESOLVED_BASE_URL}/v2/entities"
@@ -236,7 +346,13 @@ cmd_count() {
 cmd_raw() {
   local ep="$1"
   local path_query="$2"
-  resolve_endpoint "${ep}"
+  shift 2
+  local service_selector=""
+  if [[ $# -ge 1 ]]; then
+    [[ "${1}" == service=* ]] || die "usage: orion.sh raw <ep> <path?query> [service=NAME]"
+    service_selector="${1#service=}"
+  fi
+  resolve_endpoint "${ep}" "${service_selector}"
   validate_raw_path "${path_query}"
 
   local path="${path_query%%\?*}"
@@ -279,8 +395,8 @@ main() {
       cmd_endpoints
       ;;
     types)
-      [[ $# -eq 1 ]] || die "usage: orion.sh types <ep>"
-      cmd_types "$1"
+      [[ $# -ge 1 ]] || die "usage: orion.sh types <ep> [service=NAME]"
+      cmd_types "$@"
       ;;
     entities)
       [[ $# -ge 1 ]] || die "usage: orion.sh entities <ep> [k=v ...]"
@@ -295,7 +411,7 @@ main() {
       cmd_count "$@"
       ;;
     raw)
-      [[ $# -eq 2 ]] || die "usage: orion.sh raw <ep> <path?query>"
+      [[ $# -ge 2 ]] || die "usage: orion.sh raw <ep> <path?query> [service=NAME]"
       cmd_raw "$@"
       ;;
     -h | --help | help)

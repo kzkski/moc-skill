@@ -10,22 +10,23 @@ setup() {
 @test "endpoints lists configured catalog entries" {
   run "${ORION_SCRIPT}" endpoints
   [ "$status" -eq 0 ]
-  [[ "$output" == *"local"* ]]
-  [[ "$output" == *"http://localhost:1026"* ]]
-  [[ "$output" == *"sendai"* ]]
-  [[ "$output" == *"demo"* ]]
+  [[ "$output" == *"Sandbox"* ]]
+  [[ "$output" == *"https://orion.sandbox.makeour.city"* ]]
+  [[ "$output" == *"sagacity"* ]]
+  [[ "$output" == *"moc_sagacity (水位等)"* ]]
+  [[ "$output" == *"yokosuka"* ]]
 }
 
 @test "types dry-run requests /v2/types with options=count" {
-  run "${ORION_SCRIPT}" types local
+  run "${ORION_SCRIPT}" types Sandbox
   [ "$status" -eq 0 ]
   [[ "$output" == *"curl"* ]]
-  [[ "$output" == *"http://localhost:1026/v2/types"* ]]
+  [[ "$output" == *"https://orion.sandbox.makeour.city/v2/types"* ]]
   [[ "$output" == *"--data-urlencode options=count"* ]]
 }
 
 @test "entities dry-run adds default options=keyValues and limit=20" {
-  run "${ORION_SCRIPT}" entities local
+  run "${ORION_SCRIPT}" entities Sandbox
   [ "$status" -eq 0 ]
   [[ "$output" == *"/v2/entities"* ]]
   [[ "$output" == *"--data-urlencode options=keyValues"* ]]
@@ -33,7 +34,7 @@ setup() {
 }
 
 @test "entities dry-run respects explicit limit and options overrides" {
-  run "${ORION_SCRIPT}" entities local limit=5 options=count
+  run "${ORION_SCRIPT}" entities Sandbox limit=5 options=count
   [ "$status" -eq 0 ]
   [[ "$output" == *"--data-urlencode limit=5"* ]]
   [[ "$output" == *"--data-urlencode options=count"* ]]
@@ -42,7 +43,7 @@ setup() {
 }
 
 @test "entity dry-run validates id and adds default query params" {
-  run "${ORION_SCRIPT}" entity local "Room1"
+  run "${ORION_SCRIPT}" entity Sandbox "Room1"
   [ "$status" -eq 0 ]
   [[ "$output" == *"/v2/entities/Room1"* ]]
   [[ "$output" == *"--data-urlencode options=keyValues"* ]]
@@ -50,16 +51,16 @@ setup() {
 }
 
 @test "entity rejects invalid id with path traversal characters" {
-  run "${ORION_SCRIPT}" entity local "../admin"
+  run "${ORION_SCRIPT}" entity Sandbox "../admin"
   [ "$status" -eq 1 ]
   [[ "$output" == *"invalid entity id"* ]]
 }
 
 @test "count dry-run forces limit=1 and options=count" {
-  run "${ORION_SCRIPT}" count sendai type=Device
+  run "${ORION_SCRIPT}" count yokosuka type=WeatherForecast
   [ "$status" -eq 0 ]
   [[ "$output" == *"/v2/entities"* ]]
-  [[ "$output" == *"--data-urlencode type=Device"* ]]
+  [[ "$output" == *"--data-urlencode type=WeatherForecast"* ]]
   [[ "$output" == *"--data-urlencode limit=1"* ]]
   [[ "$output" == *"--data-urlencode options=count"* ]]
   [[ "$output" == *"-D -"* ]]
@@ -67,7 +68,7 @@ setup() {
 }
 
 @test "count dry-run overwrites user-supplied limit and options" {
-  run "${ORION_SCRIPT}" count local limit=99 options=keyValues
+  run "${ORION_SCRIPT}" count Sandbox limit=99 options=keyValues
   [ "$status" -eq 0 ]
   [[ "$output" == *"--data-urlencode limit=1"* ]]
   [[ "$output" == *"--data-urlencode options=count"* ]]
@@ -76,16 +77,16 @@ setup() {
 }
 
 @test "raw dry-run allows /v2 paths with query string" {
-  run "${ORION_SCRIPT}" raw demo "/v2/types?options=count"
+  run "${ORION_SCRIPT}" raw yokosuka "/v2/types?options=count"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"https://orion.demo.example.jp/v2/types"* ]]
+  [[ "$output" == *"https://orion.yokosuka.makeour.city/v2/types"* ]]
   [[ "$output" == *"--data-urlencode options=count"* ]]
   [[ "$output" == *"Fiware-Service"* ]]
-  [[ "$output" == *"openiot"* ]]
+  [[ "$output" == *"yokosuka_tenki"* ]]
 }
 
 @test "raw rejects paths outside /v2" {
-  run "${ORION_SCRIPT}" raw local "/admin/config"
+  run "${ORION_SCRIPT}" raw Sandbox "/admin/config"
   [ "$status" -eq 1 ]
   [[ "$output" == *"invalid raw path"* ]]
 }
@@ -95,21 +96,65 @@ setup() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"unknown endpoint 'unknown-platform'"* ]]
   [[ "$output" == *"Available:"* ]]
-  [[ "$output" == *"local"* ]]
-  [[ "$output" == *"sendai"* ]]
+  [[ "$output" == *"Sandbox"* ]]
+  [[ "$output" == *"sagacity"* ]]
 }
 
-@test "sendai endpoint includes Fiware service headers in dry-run" {
-  run "${ORION_SCRIPT}" entities sendai
+@test "yokosuka endpoint includes Fiware service headers in dry-run" {
+  run "${ORION_SCRIPT}" entities yokosuka
   [ "$status" -eq 0 ]
   [[ "$output" == *"Fiware-Service"* ]]
-  [[ "$output" == *"sendai"* ]]
+  [[ "$output" == *"yokosuka_tenki"* ]]
   [[ "$output" == *"Fiware-ServicePath"* ]]
-  [[ "$output" == *"/urban"* ]]
+  [[ "$output" == *"/"* ]]
 }
 
 @test "entities rejects malformed k=v arguments" {
-  run "${ORION_SCRIPT}" entities local type
+  run "${ORION_SCRIPT}" entities Sandbox type
   [ "$status" -eq 1 ]
   [[ "$output" == *"expected k=v argument"* ]]
+}
+
+@test "multi-service endpoint requires service selector" {
+  run "${ORION_SCRIPT}" entities sagacity
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"multiple Fiware-Service values"* ]]
+  [[ "$output" == *"Available:"* ]]
+  [[ "$output" == *"moc_sagacity (水位等)"* ]]
+  [[ "$output" == *"sagacity_topita"* ]]
+}
+
+@test "multi-service endpoint accepts service selector" {
+  run "${ORION_SCRIPT}" entities sagacity service=moc_sagacity
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"https://orion.sagacity.makeour.city/v2/entities"* ]]
+  [[ "$output" == *"moc_sagacity"* ]]
+  [[ "$output" != *"--data-urlencode service="* ]]
+}
+
+@test "multi-service endpoint rejects unknown service selector" {
+  run "${ORION_SCRIPT}" entities sagacity service=unknown_service
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unknown service unknown_service"* ]]
+}
+
+@test "service selector is not sent as NGSI query parameter" {
+  run "${ORION_SCRIPT}" entities sagacity service=sagacity_topita type=TopitaPointUser limit=5
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"sagacity_topita"* ]]
+  [[ "$output" == *"--data-urlencode type=TopitaPointUser"* ]]
+  [[ "$output" != *"--data-urlencode service="* ]]
+}
+
+@test "types supports service selector for multi-service endpoint" {
+  run "${ORION_SCRIPT}" types sagacity service=moc_sagacity
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/v2/types"* ]]
+  [[ "$output" == *"moc_sagacity"* ]]
+}
+
+@test "raw supports service selector for multi-service endpoint" {
+  run "${ORION_SCRIPT}" raw sagacity "/v2/entities?limit=1" service=sagacity_ikunowa
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"sagacity_ikunowa"* ]]
 }

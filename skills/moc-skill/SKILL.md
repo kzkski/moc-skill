@@ -3,8 +3,8 @@ name: moc-skill
 description: >-
   FIWARE Orion Context Broker (NGSIv2) からエンティティ情報を読み取り専用で取得する。
   データ連携基盤・都市OS・スマートシティ基盤・センサーデータ・IoTプラットフォームへの
-  GET クエリ、エンティティ一覧・型探索、NGSIv2 API 調査が必要なときに能動的に使う。
-  Orion / NGSIv2 / Context Broker / エンティティ取得 / type 一覧 / q クエリ /
+  GET クエリ、エンティティ一覧・件数確認、NGSIv2 API 調査が必要なときに能動的に使う。
+  Orion / NGSIv2 / Context Broker / エンティティ取得 / q クエリ /
   地理空間クエリ / Fiware-Service ヘッダー付き基盤アクセスの依頼で発火する。
 license: MIT
 ---
@@ -48,39 +48,43 @@ ORION="/path/to/moc-skill/scripts/orion.sh"
 
 ## 推奨ワークフロー
 
-エージェントは次の順で探索します。
+`endpoints.json` に登録された makeour.city 系 Orion では **`types` を呼ばない**（`GET /v2/types` は 401 Unauthorized）。無駄なリトライを避け、次の順で探索します。
 
-1. **endpoints** — 利用可能な基盤名を確認
-2. **types** — 対象基盤に存在する Entity Type 一覧と件数を把握
-3. **entities / entity / count** — 型や条件を絞ってエンティティを取得・件数確認
+1. **endpoints** — 基盤名・Fiware-Service 一覧（各 `note`）を確認
+2. **entities / count** — `service=`（複数サービス時）と `type=` で直接取得・件数確認
+3. **entity** — 特定 ID の詳細取得
+
+型名の手がかりは `endpoints` のサービス `note`、ユーザーの依頼文、または `entities` の試行結果から得ます。
 
 ```bash
 "${ORION}" endpoints
-"${ORION}" types sendai
-"${ORION}" entities sendai type=AirQualityObserved limit=10
-"${ORION}" count sendai type=AirQualityObserved
-"${ORION}" entity sendai "sensor-001" attrs=location,PM25
+"${ORION}" entities sagacity service=moc_sagacity limit=10
+"${ORION}" count sagacity service=sagacity_topita type=TopitaPointUser
+"${ORION}" entities yokosuka type=WeatherForecast limit=5
+"${ORION}" entity yokosuka "forecast-001" attrs=location
 ```
 
 ## コマンドリファレンス
 
 | コマンド | 説明 |
 |----------|------|
-| `endpoints` | カタログに登録された基盤名・URL・説明を表示 |
-| `types <ep>` | `GET /v2/types?options=count` |
+| `endpoints` | カタログに登録された基盤名・URL・Fiware-Service 一覧・説明を表示 |
+| `types <ep> [service=NAME]` | `GET /v2/types?options=count`（**makeour.city では 401 のため使用しない**） |
 | `entities <ep> [k=v ...]` | `GET /v2/entities`（未指定時 `options=keyValues` `limit=20` を付与） |
 | `entity <ep> <id> [k=v ...]` | `GET /v2/entities/{id}`（同上デフォルト付与） |
 | `count <ep> [k=v ...]` | `limit=1&options=count` で `Fiware-Total-Count` ヘッダーのみ返す |
-| `raw <ep> <path?query>` | `/v2/` 配下に限定した任意 GET |
+| `raw <ep> <path?query> [service=NAME]` | `/v2/` 配下に限定した任意 GET |
 
-`<ep>` は `endpoints.json` のキー名（例: `local`, `sendai`）。
+`<ep>` は `endpoints.json` のキー名（例: `Sandbox`, `sagacity`, `yokosuka`）。
+
+**複数 Fiware-Service**: 1 エントリに配列で複数サービスを登録できます。クエリ時は `service=NAME` を指定してください（Orion へのクエリパラメータではなく、ヘッダー選択用の予約キー）。単一サービスのエントリでは `service=` は不要です。
 
 ### デバッグ
 
 `ORION_DRY_RUN=1` を設定すると curl コマンドを表示するだけで実行しません。
 
 ```bash
-ORION_DRY_RUN=1 "${ORION}" entities local type=Device
+ORION_DRY_RUN=1 "${ORION}" entities yokosuka type=WeatherForecast
 ```
 
 ## NGSIv2 クエリパラメータ早見表
@@ -101,11 +105,12 @@ ORION_DRY_RUN=1 "${ORION}" entities local type=Device
 
 ## 注意点
 
+- **types は使わない**: 登録基盤では `/v2/types` が 401。型探索は `entities` + `type=` / `count` で行う
 - **読み取り専用**: POST / PATCH / DELETE / Subscription / Registration は行わない
 - **カタログ必須**: 未定義のエンドポイント名は拒否される
 - **raw は /v2/ のみ**: `/v2/` 以外へのパスはエラー
 - **Entity ID**: `[A-Za-z0-9._:~-]+` のみ許可（パストラバーサル対策）
-- **Fiware ヘッダー**: `endpoints.json` の `service` / `service_path` が空でなければ自動付与
+- **Fiware ヘッダー**: `endpoints.json` の `Fiware-Service` / `Fiware-ServicePath` が空でなければ自動付与。`Fiware-Service` が配列の場合は `service=` で選択
 - **依存**: `curl`, `jq` が PATH に必要
 
 ## カタログ形式 (`endpoints.json`)
@@ -114,13 +119,25 @@ ORION_DRY_RUN=1 "${ORION}" entities local type=Device
 {
   "endpoints": {
     "<名前>": {
-      "base_url": "https://orion.example.jp",
-      "service": "Fiware-Serviceヘッダー値(不要なら空文字)",
-      "service_path": "Fiware-ServicePath(不要なら空文字)",
+      "base_url": "https://orion.<自治体>.makeour.city",
+      "Fiware-Service": "単一ヘッダー値",
+      "Fiware-ServicePath": "ヘッダー値(不要なら空文字)",
       "note": "説明"
+    },
+    "sagacity": {
+      "base_url": "https://orion.sagacity.makeour.city",
+      "Fiware-Service": [
+        { "value": "moc_sagacity", "note": "MoC 佐賀" },
+        { "value": "sagacity_topita", "note": "Topita" },
+        { "value": "sagacity_ikunowa", "note": "保育園データ" }
+      ],
+      "Fiware-ServicePath": "",
+      "note": "複数サービスを1エントリで管理"
     }
   }
 }
 ```
+
+`Fiware-Service` は **文字列**（単一）または **配列**（複数）を指定できます。配列要素は文字列、または `value` / `Fiware-ServicePath` / `note` を持つオブジェクトにできます。エントリ共通の `Fiware-ServicePath` は、オブジェクト側で未指定の場合のデフォルトになります。
 
 新しい基盤を追加するときは、運用者が提供する Orion URL と Fiware ヘッダー値をこの形式で追記してください。

@@ -91,9 +91,9 @@ brew install curl jq
 {
   "endpoints": {
     "my-city": {
-      "base_url": "https://orion.example.jp",
-      "service": "city",
-      "service_path": "/prod",
+      "base_url": "https://orion.my-city.makeour.city",
+      "Fiware-Service": "city",
+      "Fiware-ServicePath": "/prod",
       "note": "本番都市OS基盤"
     }
   }
@@ -102,9 +102,9 @@ brew install curl jq
 
 | フィールド | 説明 |
 |------------|------|
-| `base_url` | Orion のベース URL（`http://` または `https://` のみ） |
-| `service` | `Fiware-Service` ヘッダー（不要なら `""`） |
-| `service_path` | `Fiware-ServicePath` ヘッダー（不要なら `""`） |
+| `base_url` | Orion のベース URL（例: `https://orion.<自治体>.makeour.city`、`http://` または `https://` のみ） |
+| `Fiware-Service` | NGSIv2 リクエストヘッダー `Fiware-Service` の値（不要なら `""`） |
+| `Fiware-ServicePath` | NGSIv2 リクエストヘッダー `Fiware-ServicePath` の値（不要なら `""`） |
 | `note` | 人間向けの説明 |
 
 別ファイルを使う場合は環境変数で指定します。

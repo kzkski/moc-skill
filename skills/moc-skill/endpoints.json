@@ -1,22 +1,38 @@
 {
   "endpoints": {
-    "local": {
-      "base_url": "http://localhost:1026",
-      "service": "",
-      "service_path": "",
-      "note": "ローカル開発用 Orion Context Broker"
+    "Sandbox": {
+      "base_url": "https://orion.sandbox.makeour.city",
+      "Fiware-Service": "",
+      "Fiware-ServicePath": "",
+      "note": "MoCサンドボックス"
     },
-    "sendai": {
-      "base_url": "https://orion.sendai-city.example.jp",
-      "service": "sendai",
-      "service_path": "/urban",
-      "note": "仙台スマートシティ データ連携基盤（サンプル・架空）"
+    "sagacity": {
+      "base_url": "https://orion.sagacity.makeour.city",
+      "Fiware-Service": [
+        { "value": "moc_sagacity", "note": "水位等" },
+        { "value": "sagacity_topita", "note": "Topita ポイント利用者" },
+        { "value": "sagacity_ikunowa", "note": "保育園データ" }
+      ],
+      "Fiware-ServicePath": "",
+      "note": "佐賀市"
     },
-    "demo": {
-      "base_url": "https://orion.demo.example.jp",
-      "service": "openiot",
-      "service_path": "",
-      "note": "デモ環境 Orion（サンプル・架空）"
+    "sagapref": {
+      "base_url": "https://orion.sagapref.makeour.city",
+      "Fiware-Service": "sagapref",
+      "Fiware-ServicePath": "",
+      "note": "佐賀県"
+    },
+    "yokosuka": {
+      "base_url": "https://orion.yokosuka.makeour.city",
+      "Fiware-Service": "yokosuka_tenki",
+      "Fiware-ServicePath": "/",
+      "note": "横須賀市"
+    },
+    "higashihiroshima": {
+      "base_url": "https://orion.higashihiroshima.makeour.city",
+      "Fiware-Service": "test_event",
+      "Fiware-ServicePath": "/",
+      "note": "東広島市"
     }
   }
 }
