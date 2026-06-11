@@ -1,0 +1,22 @@
+{
+  "endpoints": {
+    "local": {
+      "base_url": "http://localhost:1026",
+      "service": "",
+      "service_path": "",
+      "note": "ローカル開発用 Orion Context Broker"
+    },
+    "sendai": {
+      "base_url": "https://orion.sendai-city.example.jp",
+      "service": "sendai",
+      "service_path": "/urban",
+      "note": "仙台スマートシティ データ連携基盤（サンプル・架空）"
+    },
+    "demo": {
+      "base_url": "https://orion.demo.example.jp",
+      "service": "openiot",
+      "service_path": "",
+      "note": "デモ環境 Orion（サンプル・架空）"
+    }
+  }
+}
