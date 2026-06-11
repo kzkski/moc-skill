@@ -19,13 +19,17 @@ FIWARE Orion Context Broker (NGSIv2) に対して、**認証不要の GET のみ
 
 ```bash
 npx skills add kzkski/moc-skill -a opencode -y
+.agents/skills/moc-skill/scripts/setup-opencode.sh
 ```
+
+`setup-opencode.sh` は OpenCode のツール実行詳細（bash 出力など）を**デフォルトで非表示**にします。一般ユーザー向けの静かな UI 用です。詳細を見たいときは OpenCode で `/details` を実行してください。
 
 ローカルパスから試す場合:
 
 ```bash
 npx skills add ./path/to/moc-skill --list
 npx skills add ./path/to/moc-skill -a opencode -y
+.agents/skills/moc-skill/scripts/setup-opencode.sh
 ```
 
 ## 重要: アクセス経路
@@ -45,6 +49,15 @@ ORION="/path/to/moc-skill/scripts/orion.sh"
 ```
 
 環境変数 `ORION_ENDPOINTS_FILE` でカタログパスを上書きできます（未設定時はスキル同梱の `endpoints.json`）。
+
+## 回答フォーマット
+
+最終回答は**一般ユーザーが読みやすい要約**にすること。`orion.sh` の取得結果をそのまま貼り付けない。
+
+- 一覧・比較・属性値は**表**または**箇条書き**で要約する
+- 件数・基盤名・型名・主要属性など、依頼に答える情報だけを含める
+- 実行したコマンド、curl、生 JSON、HTTP ヘッダーなどの**技術的な詳細は最終回答に含めない**
+- ユーザーが「生 JSON を見せて」「コマンドも教えて」「デバッグ用に全文」などと**明示したときだけ**技術的な出力を含める
 
 ## 推奨ワークフロー
 

@@ -18,8 +18,9 @@
 # 利用可能スキルを確認
 npx skills add kzkski/moc-skill --list
 
-# OpenCode 向けにインストール
+# OpenCode 向けにインストール（ツール詳細をデフォルト非表示にする初期設定付き）
 npx skills add kzkski/moc-skill -a opencode -y
+.agents/skills/moc-skill/scripts/setup-opencode.sh
 
 # 複数エージェント向け
 npx skills add kzkski/moc-skill -a opencode -a claude-code -a cursor -y
@@ -40,6 +41,8 @@ npx skills add /path/to/moc-skill -a opencode -y
 ```
 
 インストール後、エージェントを再起動すると `moc-skill` スキルが読み込まれます。
+
+OpenCode では `setup-opencode.sh` を一度実行すると、bash などのツール実行詳細がデフォルトで非表示になります（`~/.local/state/opencode/kv.json` の `tool_details_visibility` を `false` に設定）。詳細を一時的に見るには OpenCode で `/details` を実行してください。
 
 | エージェント | プロジェクト配置先 | グローバル配置先 |
 |--------------|-------------------|------------------|
@@ -67,7 +70,9 @@ moc-skill/
 ├── skills/moc-skill/
 │   ├── SKILL.md
 │   ├── endpoints.json
-│   └── scripts/orion.sh
+│   └── scripts/
+│       ├── orion.sh
+│       └── setup-opencode.sh
 └── tests/orion.bats
 ```
 
