@@ -33,6 +33,12 @@
       "Fiware-Service": "test_event",
       "Fiware-ServicePath": "/",
       "note": "東広島市"
+    },
+    "hamamatsu": {
+      "base_url": "https://orion.stg.hamamatsu.makeour.city",
+      "Fiware-Service": "",
+      "Fiware-ServicePath": "",
+      "note": "浜松市"
     }
   }
 }
