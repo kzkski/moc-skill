@@ -91,6 +91,34 @@ setup() {
   [[ "$output" == *"invalid raw path"* ]]
 }
 
+@test "raw rejects dot-segment path traversal" {
+  for p in "/v2/../version" "/v2/entities/../../version" "/v2/./entities" "/v2/.." "/v2//entities" "/v2/entities/.."; do
+    run "${ORION_SCRIPT}" raw Sandbox "${p}"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"invalid raw path"* ]]
+  done
+}
+
+@test "raw rejects percent-encoded and special characters in path" {
+  for p in "/v2/%2e%2e/version" "/v2/entities%2f..%2fversion" '/v2/entities\..\version' "/v2/entities;x"; do
+    run "${ORION_SCRIPT}" raw Sandbox "${p}"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"invalid raw path"* ]]
+  done
+}
+
+@test "raw allows entity id paths and ignores dots in the query string" {
+  run "${ORION_SCRIPT}" raw Sandbox "/v2/entities/urn:ngsi-ld:Room~1.a?q=a..b"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"https://orion.sandbox.makeour.city/v2/entities/urn:ngsi-ld:Room~1.a"* ]]
+}
+
+@test "curl is invoked with --path-as-is" {
+  run "${ORION_SCRIPT}" entities Sandbox
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--path-as-is"* ]]
+}
+
 @test "unknown endpoint exits with available names" {
   run "${ORION_SCRIPT}" types unknown-platform
   [ "$status" -eq 1 ]

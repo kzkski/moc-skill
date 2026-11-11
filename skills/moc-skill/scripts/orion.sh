@@ -119,8 +119,19 @@ validate_entity_id() {
 }
 
 validate_raw_path() {
-  local path="$1"
-  [[ "${path}" =~ ^/v2/ ]] || die "invalid raw path '${path}': must start with /v2/"
+  local path_query="$1"
+  local path="${path_query%%\?*}"
+
+  [[ "${path}" =~ ^/v2/ ]] || die "invalid raw path '${path_query}': must start with /v2/"
+  # Only plain path characters; rejects percent-encoding (e.g. %2e%2e) and backslashes.
+  [[ "${path}" =~ ^/v2/[A-Za-z0-9._:~/-]*$ ]] ||
+    die "invalid raw path '${path_query}': path may only contain [A-Za-z0-9._:~/-]"
+  # Reject dot segments and empty segments so the path cannot escape /v2/.
+  case "${path%/}/" in
+    */../* | */./* | *//*)
+      die "invalid raw path '${path_query}': '.', '..' and empty path segments are not allowed"
+      ;;
+  esac
 }
 
 parse_kv_args() {
@@ -211,7 +222,7 @@ apply_default_entity_params() {
 }
 
 build_curl_args() {
-  CURL_ARGS=(-sS --fail-with-body -G -H "Accept: application/json")
+  CURL_ARGS=(-sS --fail-with-body --path-as-is -G -H "Accept: application/json")
   if [[ -n "${RESOLVED_SERVICE}" ]]; then
     CURL_ARGS+=(-H "Fiware-Service: ${RESOLVED_SERVICE}")
   fi

@@ -121,7 +121,7 @@ ORION_DRY_RUN=1 "${ORION}" entities yokosuka type=WeatherForecast
 - **types は使わない**: 登録基盤では `/v2/types` が 401。型探索は `entities` + `type=` / `count` で行う
 - **読み取り専用**: POST / PATCH / DELETE / Subscription / Registration は行わない
 - **カタログ必須**: 未定義のエンドポイント名は拒否される
-- **raw は /v2/ のみ**: `/v2/` 以外へのパスはエラー
+- **raw は /v2/ のみ**: `/v2/` 以外へのパスはエラー。`..` などのドットセグメント、`%` エンコード、`//` を含むパスも拒否される
 - **Entity ID**: `[A-Za-z0-9._:~-]+` のみ許可（パストラバーサル対策）
 - **Fiware ヘッダー**: `endpoints.json` の `Fiware-Service` / `Fiware-ServicePath` が空でなければ自動付与。`Fiware-Service` が配列の場合は `service=` で選択
 - **依存**: `curl`, `jq` が PATH に必要

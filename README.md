@@ -73,7 +73,9 @@ moc-skill/
 │   └── scripts/
 │       ├── orion.sh
 │       └── setup-opencode.sh
-└── tests/orion.bats
+└── tests/
+    ├── orion.bats
+    └── setup-opencode.bats
 ```
 
 ## 依存
@@ -108,9 +110,35 @@ brew install curl jq
 | フィールド | 説明 |
 |------------|------|
 | `base_url` | Orion のベース URL（例: `https://orion.<自治体>.makeour.city`、`http://` または `https://` のみ） |
-| `Fiware-Service` | NGSIv2 リクエストヘッダー `Fiware-Service` の値（不要なら `""`） |
-| `Fiware-ServicePath` | NGSIv2 リクエストヘッダー `Fiware-ServicePath` の値（不要なら `""`） |
+| `Fiware-Service` | NGSIv2 リクエストヘッダー `Fiware-Service` の値（不要なら `""`）。文字列（単一）または配列（複数サービス） |
+| `Fiware-ServicePath` | NGSIv2 リクエストヘッダー `Fiware-ServicePath` の値（不要なら `""`）。配列要素側で未指定の場合のデフォルトにもなる |
 | `note` | 人間向けの説明 |
+
+### 複数の Fiware-Service を登録する
+
+1 つの基盤に複数の `Fiware-Service` がある場合は、配列で登録します。要素は文字列、または `value` / `Fiware-ServicePath` / `note` を持つオブジェクトです。
+
+```json
+{
+  "endpoints": {
+    "sagacity": {
+      "base_url": "https://orion.sagacity.makeour.city",
+      "Fiware-Service": [
+        { "value": "moc_sagacity", "note": "水位等" },
+        { "value": "sagacity_topita", "note": "Topita ポイント利用者" }
+      ],
+      "Fiware-ServicePath": "",
+      "note": "佐賀市"
+    }
+  }
+}
+```
+
+複数サービスの基盤を問い合わせるときは `service=NAME` で使うサービスを選びます（ヘッダー選択用の予約キーで、Orion へのクエリパラメータとしては送られません）。指定しない場合は候補つきのエラーになります。
+
+```bash
+"$ORION" entities sagacity service=sagacity_topita type=TopitaPointUser limit=5
+```
 
 別ファイルを使う場合は環境変数で指定します。
 
@@ -122,11 +150,13 @@ export ORION_ENDPOINTS_FILE=/path/to/my-endpoints.json
 
 スキル配置後、エージェントに自然言語で依頼できます。
 
+以下は同梱の `endpoints.json` に登録されている基盤名での例です。
+
 - 「登録されている Orion 基盤を一覧して」
-- 「仙台の基盤（sendai）にどんなデータ型があるか調べて」
-- 「sendai の AirQualityObserved 型のエンティティを 10 件取得して」
-- 「local 基盤で type=Device のエンティティ件数を教えて」
-- 「demo 基盤の sensor-001 エンティティの location 属性だけ見せて」
+- 「佐賀市の基盤（sagacity）の Topita サービスから、データを 5 件取得して」
+- 「横須賀（yokosuka）の WeatherForecast 型のエンティティを 5 件見せて」
+- 「Sandbox で type=Device のエンティティ件数を教えて」
+- 「yokosuka の forecast-001 エンティティの location 属性だけ見せて」
 
 ## CLI 直接実行
 
@@ -134,14 +164,19 @@ export ORION_ENDPOINTS_FILE=/path/to/my-endpoints.json
 ORION=.agents/skills/moc-skill/scripts/orion.sh
 
 "$ORION" endpoints
-"$ORION" types sendai
-"$ORION" entities sendai type=AirQualityObserved limit=5
-"$ORION" count sendai type=Device
-"$ORION" entity local Room1 attrs=temperature
+"$ORION" entities yokosuka type=WeatherForecast limit=5
+"$ORION" entities sagacity service=sagacity_topita limit=5
+"$ORION" count Sandbox type=Device
+"$ORION" entity yokosuka forecast-001 attrs=location
+"$ORION" raw yokosuka "/v2/entities?type=WeatherForecast&limit=1"
 
 # デバッグ（curl コマンドのみ表示）
-ORION_DRY_RUN=1 "$ORION" entities local
+ORION_DRY_RUN=1 "$ORION" entities yokosuka
 ```
+
+`types` コマンド（`GET /v2/types`）も用意していますが、`makeour.city` 系の Orion では 401 Unauthorized になるため通常は使いません。型の探索は `entities` + `type=` や `count` で行います。
+
+`raw` で指定できるのは `/v2/` 配下のパスだけです。`..` などのドットセグメント、`%` エンコード、`//` を含むパスは拒否されます。
 
 ## テスト
 
@@ -149,7 +184,7 @@ ORION_DRY_RUN=1 "$ORION" entities local
 
 ```bash
 bats tests/
-shellcheck skills/moc-skill/scripts/orion.sh
+shellcheck skills/moc-skill/scripts/*.sh
 npx skills add . --list
 ```
 
