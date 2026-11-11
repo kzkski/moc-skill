@@ -39,6 +39,32 @@
       "Fiware-Service": "",
       "Fiware-ServicePath": "",
       "note": "浜松市"
+    },
+    "hamamatsu-services": {
+      "base_url": "https://orion.stg.hamamatsu.makeour.city",
+      "Fiware-Service": [
+        "acme",
+        "foresttosea",
+        "fujiyama_flood",
+        "great_value",
+        "hamamatsu_hackathon",
+        "hamamatsu_pifaa",
+        "hamamatsu_weather",
+        "kkc",
+        "novars",
+        "novars_flood",
+        "one_smile_foundation",
+        "osasi_technos",
+        "prime_value",
+        "shizuoka_university",
+        { "value": "tamemap", "note": "避難所・避難エリア" },
+        "unisoc",
+        "yachiyo_engineering",
+        "yuisupport",
+        "yuisupport_test"
+      ],
+      "Fiware-ServicePath": "",
+      "note": "浜松市（サービス別）。サービス未指定の hamamatsu とは別の Fiware-Service 群"
     }
   }
 }

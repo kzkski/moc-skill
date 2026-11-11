@@ -119,6 +119,20 @@ setup() {
   [[ "$output" == *"--path-as-is"* ]]
 }
 
+@test "hamamatsu-services requires service= and sends the selected Fiware-Service" {
+  run "${ORION_SCRIPT}" entities hamamatsu-services
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"specify service=NAME"* ]]
+  [[ "$output" == *"tamemap (避難所・避難エリア)"* ]]
+  [[ "$output" != *"jxpress"* ]]
+  [[ "$output" != *"ushio_test"* ]]
+
+  run "${ORION_SCRIPT}" entities hamamatsu-services service=tamemap
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"https://orion.stg.hamamatsu.makeour.city/v2/entities"* ]]
+  [[ "$output" == *"Fiware-Service:\\ tamemap"* ]]
+}
+
 @test "unknown endpoint exits with available names" {
   run "${ORION_SCRIPT}" types unknown-platform
   [ "$status" -eq 1 ]
